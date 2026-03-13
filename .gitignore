@@ -1,0 +1,5 @@
+# Ignore arquivos sensíveis
+.Renviron
+*.csv
+*.xlsx
+data/

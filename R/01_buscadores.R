@@ -306,30 +306,46 @@ buscar_openalex <- function(termo, max_n = 50) {
 #' Buscar no Semantic Scholar (Academico - boa cobertura de IA/CS)
 #' @param termo String de busca (ex: "machine learning climate")
 #' @param max_n Número máximo de artigos a retornar
-buscar_semantic <- function(termo, max_n = 50) {
+#' @param api_key Chave da API (obtenha em https://www.semanticscholar.org/api)
+#'        Ou defina via: Sys.setenv(SEMANTIC_KEY="sua_chave")
+buscar_semantic <- function(termo, max_n = 50, api_key = NULL) {
   
   message(paste("🧠 Buscando no Semantic Scholar por:", termo))
   
-  url <- URLencode(glue::glue("https://api.semanticscholar.org/graph/v1/paper/search?query={termo}&limit={max_n}&fields=title,authors,year,venue,doi"))
-  
-  # Tentar com retry
-  resultado <- NULL
-  for (i in 1:3) {
-    resultado <- tryCatch({
-      Sys.sleep(1)  # Delay para evitar rate limit
-      jsonlite::fromJSON(url)
-    }, error = function(e) {
-      if (i < 3) {
-        message(paste("Tentativa", i, "falhou, retrying..."))
-        Sys.sleep(2)
-      }
-      NULL
-    })
-    if (!is.null(resultado)) break
+  # API Key - prioridade: parametro > variavel ambiente
+  if (is.null(api_key)) {
+    api_key <- Sys.getenv("SEMANTIC_KEY")
   }
   
+  if (is.null(api_key) || api_key == "") {
+    warning("Semantic Scholar API key nao configurada.")
+    return(NULL)
+  }
+  
+  # URL da API
+  url <- paste0("https://api.semanticscholar.org/graph/v1/paper/search?query=",
+                URLencode(termo), "&limit=", max_n, 
+                "&fields=title,authors,year,venue,doi")
+  
+  # Headers
+  headers <- c("x-api-key" = api_key)
+  
+  # Request
+  resultado <- tryCatch({
+    Sys.sleep(1.2)
+    resp <- httr::GET(url, httr::add_headers(.headers = headers))
+    if (httr::status_code(resp) != 200) {
+      warning("Status: ", httr::status_code(resp))
+      return(NULL)
+    }
+    jsonlite::fromJSON(httr::content(resp, as = "text"))
+  }, error = function(e) {
+    warning("Erro: ", e$message)
+    NULL
+  })
+  
   if (is.null(resultado) || is.null(resultado$data) || length(resultado$data) == 0) {
-    warning("Nenhum artigo encontrado no Semantic Scholar (pode estar com rate limit).")
+    warning("Nenhum artigo encontrado no Semantic Scholar.")
     return(NULL)
   }
   

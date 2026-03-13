@@ -1,0 +1,6 @@
+# Configurações locais - NÃO COMMITAR
+# Copie este arquivo para .Renviron e adicione suas chaves
+
+# Semantic Scholar API Key
+# Obtenha em: https://www.semanticscholar.org/api
+# SEMANTIC_KEY=sua_chave_aqui
