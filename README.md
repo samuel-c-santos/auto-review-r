@@ -88,9 +88,20 @@ Auto-Review-R/
 ## API Keys
 
 ### Semantic Scholar (opcional)
+
 1. Acesse https://www.semanticscholar.org/api
 2. Solicite acesso (gratuito para uso acadêmico)
-3. Adicione a key no código quando receber
+3. Crie um arquivo `.Renviron` na raiz do projeto:
+
+```bash
+# Windows
+echo SEMANTIC_KEY=sua_chave_aqui > .Renviron
+
+# Linux/Mac
+echo 'SEMANTIC_KEY=sua_chave_aqui' > .Renviron
+```
+
+O arquivo `.Renviron` já está protegido no `.gitignore` - não será commitado.
 
 ## Licença
 

@@ -1,6 +1,6 @@
 # ==================== CONFIGURAÇÃO ====================
 # Altere aqui os parâmetros da sua pesquisa
-TERMO_BUSCA <- "deforestation brazil"        # Termo de busca
+TERMO_BUSCA <- "reserva legal amazonia"        # Termo de busca
 MAX_RESULTADOS <- 50                          # Número máximo de artigos por fonte
 ANO_MIN <- NULL                               # Ano mínimo (NULL = sem filtro)
 ANO_MAX <- NULL                               # Ano máximo (NULL = sem filtro)

@@ -322,10 +322,10 @@ buscar_semantic <- function(termo, max_n = 50, api_key = NULL) {
     return(NULL)
   }
   
-  # URL da API
-  url <- paste0("https://api.semanticscholar.org/graph/v1/paper/search?query=",
+  # URL da API - usar endpoint correto /paper/search/bulk
+  url <- paste0("https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=",
                 URLencode(termo), "&limit=", max_n, 
-                "&fields=title,authors,year,venue,doi")
+                "&fields=title,authors,year,venue,externalIds")
   
   # Headers
   headers <- c("x-api-key" = api_key)
@@ -334,23 +334,43 @@ buscar_semantic <- function(termo, max_n = 50, api_key = NULL) {
   resultado <- tryCatch({
     Sys.sleep(1.2)
     resp <- httr::GET(url, httr::add_headers(.headers = headers))
+    message("Status: ", httr::status_code(resp))
+    
     if (httr::status_code(resp) != 200) {
-      warning("Status: ", httr::status_code(resp))
+      message("Response: ", httr::content(resp, as = "text"))
       return(NULL)
     }
-    jsonlite::fromJSON(httr::content(resp, as = "text"))
+    
+    jsonlite::fromJSON(httr::content(resp, as = "text"), simplifyDataFrame = FALSE)
   }, error = function(e) {
     warning("Erro: ", e$message)
     NULL
   })
   
-  if (is.null(resultado) || is.null(resultado$data) || length(resultado$data) == 0) {
+  message("Estrutura: ", class(resultado))
+  message("Nomes: ", paste(names(resultado), collapse = ", "))
+  
+  # O bulk search retorna lista com $data
+  if (is.null(resultado)) {
     warning("Nenhum artigo encontrado no Semantic Scholar.")
     return(NULL)
   }
   
-  dados <- resultado$data
+  # Verificar estrutura da resposta
+  if (!is.null(resultado$error)) {
+    warning("Erro da API: ", resultado$error)
+    return(NULL)
+  }
   
+  # Pegar dados do campo 'data' - é uma lista de artigos
+  dados <- resultado$data
+  if (is.null(dados) || length(dados) == 0) {
+    warning("Nenhum artigo encontrado no Semantic Scholar.")
+    return(NULL)
+  }
+  
+  message(paste("Encontrados", length(dados), "artigos"))
+
   # Processar autores
   processar_autores_semantic <- function(authors) {
     if (is.null(authors) || length(authors) == 0) return(NA_character_)
@@ -364,12 +384,34 @@ buscar_semantic <- function(termo, max_n = 50, api_key = NULL) {
     }, error = function(e) NA_character_)
   }
   
+  # Extrair DOI de externalIds
+  extrair_doi <- function(externalIds) {
+    if (is.null(externalIds) || !is.list(externalIds)) return(NA_character_)
+    if (!is.null(externalIds$DOI)) as.character(externalIds$DOI) else NA_character_
+  }
+  
+  # Extrair título
+  extrair_titulo <- function(paper) {
+    if (!is.null(paper$title)) as.character(paper$title) else NA_character_
+  }
+  
+  # Extrair journal/venue
+  extrair_venue <- function(paper) {
+    if (!is.null(paper$venue)) as.character(paper$venue) else NA_character_
+  }
+  
+  # Extrair ano
+  extrair_ano <- function(paper) {
+    if (!is.null(paper$year)) as.character(paper$year) else NA_character_
+  }
+  
+  # Converter lista de artigos em data.frame
   df_final <- data.frame(
-    title = as.character(dados$title),
-    authors = sapply(dados$authors, processar_autores_semantic),
-    journal = as.character(dados$venue),
-    year = as.character(dados$year),
-    doi = as.character(dados$doi),
+    title = sapply(dados, extrair_titulo),
+    authors = sapply(dados, function(p) processar_autores_semantic(p$authors)),
+    journal = sapply(dados, extrair_venue),
+    year = sapply(dados, extrair_ano),
+    doi = sapply(dados, function(p) extrair_doi(p$externalIds)),
     stringsAsFactors = FALSE
   ) %>%
     mutate(
